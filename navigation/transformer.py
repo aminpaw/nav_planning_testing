@@ -20,7 +20,7 @@ def update(currentState:Pose):
 def transformWaypoints(path:Path):
     global tfHelper
     transformedMsg = Path()
-    transformedMsg = tfHelper.transformPath(path, "map")
+    transformedMsg = tfHelper.transformPathMsg(path, "map")
     globalWaypoints.publish(transformedMsg)
 rospy.init_node("transformer")
 framedPose = rospy.Publisher("/tf_pose", PoseStamped, queue_size=10)
