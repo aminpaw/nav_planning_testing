@@ -22,7 +22,7 @@ def transformWaypoints(path:Path):
     transformedMsg = Path()
     transformedMsg = tfHelper.transformPathMsg(path, "map")
     print(tfHelper.getTransform("local", "map"))
-    globalWaypoints.publish(transformedMsg))
+    globalWaypoints.publish(transformedMsg)
 
 rospy.init_node("transformer")
 framedPose = rospy.Publisher("/tf_pose", PoseStamped, queue_size=10)
