@@ -5,8 +5,11 @@ import numpy as np
 from geometry_msgs.msg import Pose, PoseStamped
 import tf_helper
 from tf2_geometry_msgs import PoseStamped
+from nav_msgs.msg import Path
+
 last_pose = np.array([0,0,0])
 poseMsg = PoseStamped()
+
 def update(currentState:Pose):
     global last_pose
     poseMsg.pose = currentState
@@ -14,9 +17,18 @@ def update(currentState:Pose):
     last_pose[1] = currentState.position.y
     last_pose[2] = currentState.orientation.w   
 
+def transformWaypoints(path:Path):
+    global tfHelper
+    transformedMsg = Path()
+    transformedMsg = tfHelper.transformPath(path, "map")
+    globalWaypoints.publish(transformedMsg)
 rospy.init_node("transformer")
-rospy.Subscriber("/carmaker/odom", Pose, callback=update)
 framedPose = rospy.Publisher("/tf_pose", PoseStamped, queue_size=10)
+globalWaypoints = rospy.Publisher("/transformed_waypoints", Path, queue_size=10)
+tfHelper = tf_helper.TFHelper("transformer")
+
+rospy.Subscriber("/carmaker/odom", Pose, callback=update)
+rospy.Subscriber("/waypoints", Path, callback=transformWaypoints)
 
 # Broadcast tf
 while (rospy is not rospy.is_shutdown):
