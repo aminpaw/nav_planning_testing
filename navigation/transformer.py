@@ -35,7 +35,7 @@ rospy.Subscriber("/waypoints", Path, callback=transformWaypoints)
 # Broadcast tf
 while (rospy is not rospy.is_shutdown):
     br = tf.TransformBroadcaster()
-    yaw = last_pose[2]
+    yaw = -last_pose[2]
     s, c = np.sin(yaw), np.cos(yaw)
     rot_mat = np.array([[c,s],[-s,c]])
     pose = rot_mat@(last_pose[:2].reshape(2,1))

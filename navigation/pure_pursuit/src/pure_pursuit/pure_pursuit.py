@@ -9,10 +9,12 @@ import numpy as np
 from geometry_msgs.msg import Pose, PoseStamped
 import rospy
 from nav_msgs.msg import Path
-import tf_helper
+from tf_helper import *
+import tf
+import tf2_ros
 
 BASEWIDTH = rospy.get_param("/base_width")  # [m] car length
-LOOKAHEADCONSTANT = rospy.get_param("/look_ahead_constant")  # look ahead constant
+LOOKAHEADCONSTANT = 0.8 #rospy.get_param("/look_ahead_constant")  # look ahead constant
 
 
 @dataclass
@@ -69,10 +71,10 @@ class State:
             new state of the vehicle received from SLAM
         """
 
-        self.position.x = currentState.position.x
-        self.position.y = currentState.position.y
-        self.yaw = currentState.orientation.z
-        self.currentSpeed = currentState.orientation.x
+        self.position.x = currentState.pose.position.x
+        self.position.y = currentState.pose.position.y
+        self.yaw = currentState.pose.orientation.z
+        self.currentSpeed = currentState.pose.orientation.x
         self.rearX = self.position.x - ((BASEWIDTH / 2) * math.cos(self.yaw))
         self.rearY = self.position.y - ((BASEWIDTH / 2) * math.sin(self.yaw))
         self.poseList.append((self.position.x, self.position.y, self.yaw))
@@ -128,7 +130,7 @@ class WayPoints:
         self.yList: List[float] = []
         self.oldNearestPointIndex: int = 0
         self.firstLoop: bool = False
-        self.tfHelper = tf_helper.TFHelper("purepursuit_controller")
+        self.tf_help = TFHelper("purepursuit_controller")
 
     def add(self, waypointsMsg: Path) -> None:
         """
@@ -139,8 +141,9 @@ class WayPoints:
         waypoints : Pose
             waypoint of the vehicle received from the path planner
         """
-        self.waypoints = self.tfHelper.transformPathMsg(waypointsMsg, "map")
-        self.firstLoop = False
+        self.waypoints=self.tf_help.transformPathMsg(waypointsMsg,"map")
+        #self.waypoints = waypointsMsg
+        #self.firstLoop = False
         # self.xlist = waypoints.poses[0].pose.position.x
         # self.xList.append(waypoints.position.x)
         # self.yList.append(waypoints.position.y)
@@ -167,10 +170,9 @@ class WayPoints:
 
         if self.firstLoop is False:
             # search nearest point index
-            for index in enumerate(self.waypoints.poses):
+            for index, _ in enumerate(self.waypoints.poses):
                 # Extracting and storing X and Y coordinates seperately in a list
                 # to get minimum distance in first loop only
-
                 self.xList.append(self.waypoints.poses[index].pose.position.x)
                 self.yList.append(self.waypoints.poses[index].pose.position.y)
             distanceX = [state.rearX - icx for icx in self.xList]
@@ -179,24 +181,27 @@ class WayPoints:
             if len(distance) != 0:
                 ind: int = int(np.argmin(distance))
                 self.oldNearestPointIndex = ind
-                self.firstLoop = True
 
         else:
             ind = self.oldNearestPointIndex
-            # distanceThisIndex = state.calcDistance(self.xList[ind], self.yList[ind])
-            distanceThisIndex = state.calcDistance(
-                self.points[ind].pose.position.x, self.points[ind].pose.position.y
-            )
-            while ind < len(self.xList) - 1:
-                # distanceNextIndex = state.calcDistance(self.xList[ind + 1], self.yList[ind + 1])
-                distanceNextIndex = state.calcDistance(
-                    self.points[ind + 1].pose.position.x, self.points[ind + 1].pose.position.y
-                )
-                if distanceThisIndex < lookAhead:
-                    ind = ind + 1
+            #distanceThisIndex = state.calcDistance(self.xList[ind], self.yList[ind])
+            if self.waypoints.poses != []:
+                distanceThisIndex = state.calcDistance(self.xList[ind], self.yList[ind])
+                #distanceThisIndex = state.calcDistance(
+                #    self.waypoints.poses[ind].pose.position.x, self.waypoints.poses[ind].pose.position.y
+                #)
 
-                else:
-                    break
+                while ind < len(self.xList) - 1:
+                    distanceNextIndex = state.calcDistance(self.xList[ind + 1], self.yList[ind + 1])
+                    #distanceNextIndex = state.calcDistance(
+                     #   self.waypoints.poses[ind + 1].pose.position.x, self.waypoints.poses[ind + 1].pose.position.y
+                    #)
+                    if distanceThisIndex < lookAhead:
+                        ind = ind + 1
+
+                    else:
+
+                        break
 
                 distanceThisIndex = distanceNextIndex
             self.oldNearestPointIndex = ind
